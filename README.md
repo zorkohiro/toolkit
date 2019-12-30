@@ -1,2 +1,2 @@
 # toolkit
-misc stuff, mostly ancient, that I use
+misc stuff, mostly ancient, that I use.

@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# Copyright (c) 1999, 2013 by Matthew Jacob
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice immediately at the beginning of the file, without modification,
+#    this list of conditions, and the following disclaimer.
+# 2. The name of the author may not be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+FILESIZ=${FILESIZ-1m}
+FILECNT=${FILECNT-10}
+PATFLAG=${PATFLAG--p}
+
+if [ $# -ne 1 ]; then
+	echo "usage: $0 testdirectory"
+	exit 1
+fi
+failed=0
+passed=0
+total=0
+i=1
+while [ $i -le ${FILECNT} ]
+do
+	if [ -f $1/file.$i ]; then
+		filbuf -S ${PATFLAG} $i -s ${FILESIZ} -i $1/file.$i  > /dev/null 2>&1
+		if [ $? -ne 0 ]
+		then
+			failed=`expr $failed '+' 1`
+			echo "rechecking $1/file.$i failed"
+		else
+			passed=`expr $passed '+' 1`
+			echo "rechecking $1/file.$i passed"
+		fi
+		total=`expr $total '+' 1`
+	fi
+	i=`expr $i '+' 1`
+done
+if [ $total -gt 0 ]; then
+ echo $total total present
+ echo $failed failed
+ echo $passed passed
+fi
+if [ $failed -gt 0 ]; then
+ exit 1
+else
+ exit 0
+fi

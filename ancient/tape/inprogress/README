@@ -1,0 +1,8 @@
+
+Test cases for tape:
+
+1. Read 12k on a 10k record- verify that the record number only
+incremented once.
+
+2. Read 12k on a 10k record that's the last in a file. Verify that
+we're at the next file, record 0.

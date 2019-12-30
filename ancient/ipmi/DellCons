@@ -1,0 +1,4 @@
+#!/bin/sh
+ipmitool -I lanplus -H $1 -U root -P calvin sol deactivate
+ipmitool -I lanplus -H $1 -U root -P calvin sol activate
+ipmitool -I lanplus -H $1 -U root -P calvin sol deactivate
