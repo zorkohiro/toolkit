@@ -25,9 +25,10 @@
  * SUCH DAMAGE.
  */
 /*
- * Remove stuff in /tmp owned by the invoker.
+ * Remove stuff in /tmp and $TMDIR owned by the invoker.
+ * Skip files with a leading '.' in the name.
  */
-/* From an old BSD (2.9) distro */
+/* Idea from a similar BSD (2.9) distro's program */
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -35,45 +36,82 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <string.h>
 
 int
 main(void)
 {
-	struct stat stbuf;
-	struct dirent *dp;
+    struct stat stbuf;
+    struct dirent *dp;
+    char **listp;
+    size_t d, ndir;
     uid_t uid;
     DIR *dirp;
 
-	if ((uid = getuid()) == 0) {
-		exit(EXIT_SUCCESS);
-	}
-    dirp = opendir("/tmp");
-	if (dirp == NULL) {
-		perror("/tmp");
-		exit(EXIT_FAILURE);
-	}
-    if (chdir("/tmp") < 0) {
-        perror("chdir /tmp");
+    if ((uid = getuid()) == 0 || geteuid() == 0) {
+        fprintf(stderr, "I'm afraid I can't let you do that, Dave. You cannot run as root.\n");
         exit(EXIT_FAILURE);
     }
-	
-    while ((dp = readdir(dirp)) != NULL) {
-        if (dp->d_type != DT_REG)
-            continue;
 
-        if (stat(dp->d_name, &stbuf) < 0)
-            continue;
+    /*
+     * Build list of directories to traverse. Should be max of two.
+     */
+    if (getenv("TMPDIR") != NULL) {
+        ndir = 2;
+    } else {
+        ndir = 1;
+    }
+    listp = calloc(ndir, sizeof (char *));
+    if (listp == NULL) {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    listp[0] = "/tmp";
+    if (ndir == 2) {
+        listp[1] = getenv("TMPDIR");
+        if (listp[1][0] != '/') {
+            fprintf(stderr, "TMPDIR not an absolute path\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 
-        if (stbuf.st_uid != uid) {
-            continue;
+    for (d = 0; d < ndir; d++) {
+
+        if (chdir(listp[d]) < 0) {
+            fprintf(stderr, "chdir %s: %s\n", listp[d], strerror(errno));
+            exit(EXIT_FAILURE);
         }
-        if (unlink(dp->d_name)) {
-            perror(dp->d_name);
-            continue;
+
+        dirp = opendir(listp[d]);
+        if (dirp == NULL) {
+            perror(listp[d]);
+            exit(EXIT_FAILURE);
         }
-        printf("%s\n", dp->d_name);
-	}
-	exit(EXIT_SUCCESS);
+
+        while ((dp = readdir(dirp)) != NULL) {
+            if (dp->d_type != DT_REG)
+                continue;
+
+            if (dp->d_name[0] == '.')
+                continue;
+
+            if (stat(dp->d_name, &stbuf) < 0)
+                continue;
+
+            if (stbuf.st_uid != uid)
+                continue;
+
+            if (unlink(dp->d_name)) {
+                fprintf(stderr, "%s/%s: %s\n", listp[d], dp->d_name, strerror(errno));
+                continue;
+            }
+
+            printf("removed %s/%s\n", listp[d], dp->d_name);
+        }
+        closedir(dirp);
+    }
+    exit(EXIT_SUCCESS);
 }
 /*
  * vim:ts=4:sw=4:expandtab
