@@ -1,0 +1,4 @@
+Somewhat ancient IPMI standalone for adding to conman
+and to control power. The power portion should be
+merged into my powerman changes but I can't be bothered
+at the moment.

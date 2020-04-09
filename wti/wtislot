@@ -1,0 +1,28 @@
+#!/bin/sh
+UNIT=/tmp/.wtiunits
+if [ ! -f ${UNIT} ]; then
+ for i in 0
+ do
+  wtistatus wti${i} |egrep "ON|OFF" | awk ' { print $1, $3 }' | sed -e "/undefined/d" -e "s/^.*$/wti${i}	&/" >> ${UNIT}
+ done
+ chmod 777 ${UNIT}
+fi
+if [ $# -ne 0 ]; then
+ for i in $*
+ do
+  case $(basename $0) in
+  wtiunit)
+	grep $i ${UNIT} | awk ' { print $1 }'
+	;;
+  wtislot)
+	grep $i ${UNIT} | awk ' { print $2 }'
+	;;
+  wtiloc)
+	grep $i ${UNIT} | awk ' { print $1, $2 }'
+	;;
+  esac
+ done
+else
+ cat ${UNIT}
+fi
+exit 0

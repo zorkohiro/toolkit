@@ -1,0 +1,8 @@
+Package: feraltoolkit
+Version: %VERSION%
+Section: base
+Priority: optional
+Architecture: all
+Depends: bash, ipmitool, iptables, awk
+Maintainer: Matthew Jacob <github@feral.com>
+Description: Various useful tools

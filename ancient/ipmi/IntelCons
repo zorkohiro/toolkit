@@ -1,2 +1,0 @@
-#!/bin/sh
-ipmitool -I lanplus -H $1 -U root -P Xyratex sol activate

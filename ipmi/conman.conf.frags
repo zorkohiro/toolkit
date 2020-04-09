@@ -1,0 +1,1 @@
+console name="r2d2" log="r2d2" dev="/usr/local/bin/IPMIConsole r2d2-ipmi admin admin"

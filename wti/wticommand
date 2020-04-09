@@ -1,0 +1,22 @@
+#!/bin/bash
+
+host=$1
+verb=$2
+case $verb in
+status)
+ status=$(wtistatus $(wtiunit $host) |grep $host |awk ' { print $5 }' | tr 'A-Z' 'a-z')
+ echo Chassis Power is $status
+ ;;
+on)
+ wtion $(wtiloc $host)
+ ;;
+off)
+ wtioff $(wtiloc $host)
+ ;;
+reset)
+ wtioff $(wtiloc $host)
+ sleep 5
+ wtion $(wtiloc $host)
+ ;;
+esac
+exit 0

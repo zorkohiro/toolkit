@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+log_user 0
+set timeout 10
+spawn $env(SHELL)
+match_max 100000
+send -- "telnet [lindex $argv 0]\r"
+expect "NPS> "
+send -- "/off [lindex $argv 1]\r"
+expect "NPS> "
+send -- "/x\r"
+exit
