@@ -60,5 +60,7 @@ all:
 	install -m 555 epochtime ${BINDIR}
 	install -m 555 ipblacklist ${BINDIR}
 	ln ${BINDIR}/ipblacklist ${BINDIR}/ipunblacklist
+	install -m 555 client_tool ${BINDIR}
+	install -m 555 enhanced_arp ${BINDIR}
 
 clean:

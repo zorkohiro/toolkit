@@ -1,0 +1,242 @@
+#!/bin/bash
+/*
+ * Copyright (c) 2021 by Matthew Jacob
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of The Version 2 GNU General Public License as published
+ * by the Free Software Foundation.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+/*
+ * Tool for debian based systems to make a bit easier up/down toolage for wifi and wired connections
+ *
+ * Note that the interfaces used should not be known via /etc/network/interfaces* or by dhcpcd.conf.
+ */
+export TMPDIR=/dev/shm
+PATH=/usr/bin:/usr/sbin:/sbin:/bin:/usr/local/bin:/usr/local/sbin
+supfile=/tmp/wpa_supplicant_ctool.conf
+psk=
+ssid=
+intf=
+
+#
+# Subsidiary functions
+#
+function failed
+{
+ if [[ $# -gt 0 ]]; then
+  echo "$@"
+ fi
+ exit 1
+}
+
+function usage
+{
+ echo 'usage:'
+ echo '       client_tool network up interface {dhcp|network/width} {ssid=SSID psk=psk [identity=identity]}'
+ echo '       client_tool network down interface'
+ echo '       client_tool scanbssid interface'
+ failed
+}
+
+#
+# Implementation functions
+#
+
+function network_up
+{
+ #
+ # Create interface scriptlet
+ #
+ intf=$3
+ echo auto $intf > /tmp/$intf
+ echo allow-hotplug $intf >> /tmp/$intf
+
+ shift 3
+ if [[ $1 == "dhcp" ]]; then
+  echo iface $intf inet dhcp >> /tmp/$intf
+ else
+  echo iface $intf inet static >> /tmp/$intf
+  echo " address $1" >> /tmp/$intf
+ fi
+ shift
+ ssid=
+ psk=
+ identity=
+ wifi=0
+ for arg in $*; do
+  case $arg in
+   ssid=*)
+     [[ -z $ssid ]] || failed "ssid already set once"
+     ssid=$(echo $arg | sed 's/^.*=//')
+     wifi=$((wifi + 1))
+     ;;
+   psk=*)
+     [[ -z $psk ]] || failed "psk already set once"
+     psk=$(echo $arg | sed 's/^.*=//')
+     wifi=$((wifi + 2))
+     ;;
+   identity=*)
+     [[ -z $identity ]] || failed "identity already set once"
+     identity=$(echo $arg | sed 's/^.*=//')
+     wifi=$((wifi + 4))
+     ;;
+   *)
+     failed "unknown argument $arg"
+     ;;
+  esac
+ done
+
+ if [[ $wifi -ne 0 ]]; then
+  if [[ $wifi != 3 && $wifi != 7 ]]; then
+   usage
+  fi
+  # Use wext first.
+  echo "pre-up wpa_supplicant -B -Dwext,nl80211 -i $intf -c${supfile}" >> /tmp/$intf
+  echo "post-down killall -q wpa_supplicant" >> /tmp/$intf
+  echo "network={" > $supfile
+  echo "ssid=\"$ssid\"" >> $supfile
+  if [[ $psk == "NONE" ]]; then
+   if [[ -n $identity ]]; then
+    echo "You cannot ask for an open wifi connection and specify an EAP identity at the same time"
+    failed "you fool"
+   fi
+   echo 'key_mgmt=NONE' >> $supfile
+  elif [[ -z $identity ]]; then
+   echo 'key_mgmt=WPA-PSK' >> $supfile
+   echo "psk=\"$psk\"" >> $supfile
+  else
+   if [[ $wifi != 7 ]]; then usage; fi
+   echo 'key_mgmt=WPA-EAP' >> $supfile
+   echo 'scan_ssid=1' >> $supfile
+   echo 'priority=1' >> $supfile
+   echo "identity=\"$identity\"" >> $supfile
+   echo "password=\"$psk\"" >> $supfile
+   echo 'phase1="peaplabel=0"' >> $supfile
+   echo 'phase2="auth=MSCHAPV2"' >> $supfile
+  fi
+  echo '}' >> $supfile
+ fi
+ sudo mv /tmp/$intf /etc/network/interfaces.d
+ #
+ # In case it was already up, tear it down
+ #
+ sudo ifdown $intf > /dev/null 2>&1
+ sleep 1
+ set -o pipefail
+ pf=$(mktemp)
+ 2>&1 sudo ifup $intf | tee $pf
+ if [[ $? -ne 0 ]]; then
+  sudo rm -f $pf /etc/network/interfaces.d/$intf /tmp/$intf
+  failed "ifup of $intf failed"
+ fi
+ if [[ $1 == "dhcp" ]]; then
+  grep -q "No DHCPOFFERS received" $pf
+  if [[ $? -eq 0 ]]; then
+   sudo ifdown $intf > /dev/null 2>&1
+   sudo ifconfig $intf down > /dev/null 2>&1
+   sudo rm -f $pf /etc/network/interfaces.d/$intf /tmp/$intf
+   failed "Did not get a lease"
+  fi
+ fi
+ rm -f $pf
+}
+
+function network_down
+{
+ intf=$1
+ #
+ # Are we up?
+ #
+ addrs=$(ip addr show $intf |grep 'inet '|sed -e 's/^.*inet //' -e 's/\/.*$//')
+ if [[ -z $addrs ]]; then
+  sudo rm -f /etc/network/interfaces.d/$intf
+  return
+ fi
+ sudo ifdown $intf
+ result=$?
+ #
+ # Unconditionally remove interface fail whether pass or fail
+ #
+ sudo rm -f /etc/network/interfaces.d/$intf
+ if [[ $result -ne 0 ]]; then
+  failed "network_down $intf failed"
+ fi
+ #
+ # Settle time seems important if we're going to
+ # turn right around and enable
+ #
+ sleep 5
+}
+
+#
+# Mainline
+#
+(
+flock 9
+case $1 in
+ network)
+   case $2 in
+    up)
+     if [[ $# -lt 4 ]]; then
+      usage
+     fi
+     network_up $*
+     ;;
+    down)
+     if [[ $# != 3 ]]; then
+      usage
+     fi
+     network_down $3
+     ;;
+    *)
+     usage
+     ;;
+   esac
+   ;;
+ scanbssid)
+   if [[ $# != 2 ]]; then
+    usage
+   fi
+   #
+   # We up?
+   #
+   set -o pipefail
+   pf=$(mktemp)
+   sudo ip link show $2 > $pf 2>&1
+   if [[ $? -ne 0 ]]; then
+    rm -f $pf
+    failed could not get $2 link state
+   fi
+   pushedup=no
+   head -1 $pf | grep -q UP
+   if [[ $? -ne 0 ]]; then
+     sudo ip link set $2 up
+     if [[ $? -ne 0 ]]; then
+      rm -f $pf
+      failed could not push up link on $2
+     fi
+     pushedup=yes
+   fi
+   rm -f $pf
+   sudo iw dev $2 scan
+   if [[ $pushedup == "yes" ]]; then
+     sudo ip link set $2 down > /dev/null 2>&1
+   fi
+   ;;
+ *)
+   usage
+   ;;
+esac
+) 9>/var/lib/client_tool/client_tool.lock
+exit 0
