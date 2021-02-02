@@ -1,0 +1,39 @@
+#!/bin/bash
+tmp1=$(mktemp)
+tmp2=$(mktemp)
+if [[ $# -ne 0 ]]; then
+ /usr/sbin/arp $*
+ exit $?
+fi
+awk ' { if ($1 == "host") printf "%30s ", $2; else if ($1 == "hardware") printf "%17s\n", substr($NF, 0, 17) }' /etc/dhcp/dhcpd.conf > $tmp1
+lno=1
+arp -n | while read Address HWtype HWaddress Flags_Mask Iface; do
+ if [[ $HWtype == "(incomplete)" ]]; then
+  :
+ elif [[ $lno -gt 1 ]]; then
+  IP=$(echo "$Address $HWtype $HWaddress $Flags_Mask $Iface"| awk ' { print $1 }')
+  alt=
+  grep -q $IP $tmp1
+  if [[ $? -ne 0 ]]; then
+   alt=$(grep $IP /var/log/syslog | grep 'DHCP' | tail -1 | awk ' { print $11 }' | grep '(.*)')
+  fi
+  host $Address 2>/dev/null > $tmp2
+  grep -q 'not found:' $tmp2
+  if [[ $? -ne 0 ]]; then
+   rn=$(sed -e 's/^.* //' -e 's/\.$//' $tmp2)
+   [[ -z $rn ]] || Address="$rn"
+  else
+   grep $Address /etc/hosts > $tmp2
+   if [[ $? -eq 0 ]]; then
+    Address=$(awk ' { print $2 }' $tmp2)
+   else
+    Address=$(printf "%16s" $Address)
+   fi
+  fi
+  printf "%s %8s %s %s\n" $HWaddress $Iface $Address $alt
+ else
+  echo "HWAddress            Iface Address"
+ fi
+ ((lno++))
+done
+rm $tmp1 $tmp2
