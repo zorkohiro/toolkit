@@ -15,7 +15,7 @@ arp -n | while read Address HWtype HWaddress Flags_Mask Iface; do
   alt=
   grep -q $IP $tmp1
   if [[ $? -ne 0 ]]; then
-   alt=$(grep $IP /var/log/syslog | grep 'DHCP' | tail -1 | awk ' { print $11 }' | grep '(.*)')
+   alt=$(grep -w $IP /var/log/syslog | grep 'DHCP' | tail -1 | awk ' { print $11 }' | grep '(.*)')
   fi
   host $Address 2>/dev/null > $tmp2
   grep -q 'not found:' $tmp2
@@ -23,7 +23,7 @@ arp -n | while read Address HWtype HWaddress Flags_Mask Iface; do
    rn=$(sed -e 's/^.* //' -e 's/\.$//' $tmp2)
    [[ -z $rn ]] || Address="$rn"
   else
-   grep $Address /etc/hosts > $tmp2
+   grep -w $Address /etc/hosts > $tmp2
    if [[ $? -eq 0 ]]; then
     Address=$(awk ' { print $2 }' $tmp2)
    else
