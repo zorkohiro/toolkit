@@ -1,5 +1,5 @@
 #
-# Copyright (c) 1997-2020 by Matthew Jacob
+# Copyright (c) 1997-2021 by Matthew Jacob
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,7 @@
 # Redwood City, CA 94062
 # USA
 #
-# gplbsd at feral com
+# gplbsd at feralsw com
 MAJORV	?= 1
 MINORV	?= 0
 MICROV  ?= 0

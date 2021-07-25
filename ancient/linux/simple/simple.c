@@ -1,7 +1,7 @@
 /*
  * stupid - a minimal linux loadable driver
  * 
- *  Copyright (c) 2010 by Matthew Jacob
+ *  Copyright (c) 2010, 2021 by Matthew Jacob
  *  All rights reserved.
  * 
  *   This program is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
  *  Menlo Park, CA 94025
  *  USA
  * 
- *  gpl at feral com
+ *  gpl at feralsw com
  */
 
 #include <linux/version.h>

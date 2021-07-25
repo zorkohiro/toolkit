@@ -1,6 +1,6 @@
 /* $Id: tape_pattern_tester.c,v 1.8 2007/09/22 04:26:40 mjacob Exp $ */
 /*
- * Copyright (c) 2000 by Matthew Jacob.
+ * Copyright (c) 2000, 2021 by Matthew Jacob.
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without

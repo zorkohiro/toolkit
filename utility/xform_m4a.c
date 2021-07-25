@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 by Matthew Jacob
+ * Copyright (c) 2015, 2021 by Matthew Jacob
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

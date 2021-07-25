@@ -1,6 +1,6 @@
 /* $Id: genpat.c,v 1.2 2013/04/10 01:52:28 mjacob Exp $ */
 /*
- * Copyright (c) 2013 by Matthew Jacob
+ * Copyright (c) 2013, 2021 by Matthew Jacob
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

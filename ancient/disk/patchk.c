@@ -1,6 +1,6 @@
 /* $Id: patchk.c,v 1.25 2013/03/08 02:03:41 mjacob Exp $ */
 /*
- * Copyright (c) 1999, 2001, 2002 Matthew Jacob
+ * Copyright (c) 1999, 2001, 2002, 2021 Matthew Jacob
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
