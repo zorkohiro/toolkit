@@ -1,0 +1,38 @@
+#!/bin/bash
+export PATH=$PATH:/usr/sbin:/usr/local/bin
+
+function ssh_alive {
+ local beg=$(date +%s)
+ local now
+ local rem=$1
+ local lim=$2
+ t=$(mktemp)
+ y=$(mktemp)
+
+ while :; do
+  now=$(date +%s)
+  ping -c 1 -w 1 $rem > /dev/null
+  ssh -n -o ConnectTimeout=1 $rem ls > $t 2>&1
+  if [[ $? -eq 0 ]]; then break; fi
+  grep -q 'Connection refused' $t
+  if [[ $? -eq 0 && -f $y ]]; then echo $rem is up; rm -f $y; fi
+  if [[ $((now - beg)) -gt $lim ]]; then
+   rm -f $t $y
+   return -1
+  fi
+  sleep 1
+ done
+ rm -f $t $y
+ return $((now - beg))
+}
+
+ap=$1
+limit=300
+[[ -n $2 ]] && limit=$2
+ssh_alive $ap $limit
+elps=$?
+if [[ $elps -lt 0 ]]; then
+ echo $ap not up in $lim seconds
+ exit 1
+fi
+echo $ap up in $elps seconds
