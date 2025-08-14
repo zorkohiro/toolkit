@@ -32,9 +32,9 @@ arp -n | while read Address HWtype HWaddress Flags_Mask Iface; do
     Address=$(printf "%16s" $Address)
    fi
   fi
-  printf "%s %9s %s %s\n" $HWaddress $Iface $Address $alt
+  printf "%s %11s %s %s\n" $HWaddress $Iface $Address $alt
  else
-  echo "HWAddress             Iface Address"
+  echo "HWAddress               Iface Address"
  fi
  ((lno++))
 done
