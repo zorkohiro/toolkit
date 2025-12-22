@@ -1,0 +1,37 @@
+#!/bin/bash
+tf=$(mktemp)
+trap "rm -v $tf" 1 2 3
+cat > $tf <<EOF
+#!/usr/bin/env python3
+import subprocess
+import os
+import sys
+
+files = []; drs = []; sizes = []
+get =  subprocess.check_output(["/bin/bash", "-c", "dpkg -L "+sys.argv[1]]).decode("utf-8").splitlines()
+for l in get:
+    if os.path.isfile(l):
+        info = subprocess.check_output(["du", "-h", l]).decode("utf-8")
+        sizes.append(float(info.split()[0].replace("K", "").replace(",", ".").replace("M", "")))
+        files.append(info)
+    else:
+        drs.append(l)
+try:
+    if sys.argv[2] == "--verbose":
+        print("\nDirectories:\n"+20*"=")
+        for l in sorted(drs):
+            print(l)
+        print("\nInstalled files:\n"+20*"=")
+        for l in sorted(files):
+            print(l.strip())
+        print("\nTotal size:\n"+20*"=")
+        print(str(sum(sizes))+"K")
+except IndexError:
+#    print(str(sum(sizes))+"K")
+    v = sum(sizes)
+    print("{:.0f}".format(v * 1024))
+EOF
+chmod +x $tf
+dpkg -l|awk '$1 == "ii"{ print $2 }'|while read pkg; do sz=$($tf $pkg); printf "%10s %s\n"  $sz $pkg; done
+
+rm -f $tf
