@@ -1,4 +1,6 @@
 #!/bin/bash
+M=$((1 << 20))
+K=1024
 tf=$(mktemp)
 trap "rm -v $tf" 1 2 3
 cat > $tf <<EOF
@@ -32,6 +34,14 @@ except IndexError:
     print("{:.0f}".format(v * 1024))
 EOF
 chmod +x $tf
-dpkg -l|awk '$1 == "ii"{ print $2 }'|while read pkg; do sz=$($tf $pkg); printf "%10s %s\n"  $sz $pkg; done
-
+dpkg -l|awk '$1 == "ii"{ print $2 }'|while read pkg; do sz=$($tf $pkg); printf "%10s %s\n"  $sz $pkg; done | sort -k1 -n | while read sz p; do
+ if [[ $sz -gt $M ]]; then
+  xm=$((((sz + $((M - 1)))) >> 20))"M"
+ elif [[ $sz -ge $K ]]; then
+  xm=$((((sz + $((K - 1)))) >> 10))"K"
+ else
+  xm=$sz
+ fi
+ printf "%10s %s\n" $xm $p
+done
 rm -f $tf
