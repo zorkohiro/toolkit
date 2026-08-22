@@ -54,7 +54,7 @@ MAJORV	?= 1
 MINORV	?= 0
 MICROV  ?= 0
 RELEASE := ${MAJORV}.${MINORV}.${MICROV}
-TOOLS = ipmi utility scripts
+TOOLS = ipmi utility scripts docker
 BASE    := feraltoolkit
 PKGNAME	:= ${BASE}-${RELEASE}
 

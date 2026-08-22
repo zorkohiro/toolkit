@@ -1,0 +1,15 @@
+FROM ubuntu:24.04
+RUN DEBIAN_FRONTEND=noninteractive apt update
+RUN DEBIAN_FORNTEND=noninteractive apt update & apt install -y bc build-essential cpio curl git rsync tar unzip file vim \
+  openssh-client  openssl python3
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 2
+RUN userdel -r ubuntu || true
+RUN groupadd -g GID LOGNAME || true
+RUN useradd -m -s /bin/bash -u UID -g GID LOGNAME
+RUN mkdir -p /etc/sudoers.d && echo 'LOGNAME ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/LOGNAME && chmod 600 /etc/sudoers.d/LOGNAME
+# This is safe because app will be safe in the directory which is mapped at runtime
+RUN ln -s /app/.git-credentials /home/LOGNAME
+RUN ln -s /app/.gitconfig /home/LOGNAME
+RUN ln -s /app/.ssh /home/LOGNAME
+WORKDIR /app
+CMD ["make"]

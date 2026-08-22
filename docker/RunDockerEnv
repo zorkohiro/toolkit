@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+if [[ $# -ne 1 ]]; then
+    echo "usage: $(basename $0) docker-env-name"
+    exit 1
+fi
+IMAGE=$1
+ui="--user $UID"
+docker run  -it $ui --rm \
+    -v $(pwd):/app ${QCAMOUNT} \
+    -w /app $IMAGE bash
