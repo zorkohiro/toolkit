@@ -1,0 +1,7 @@
+
+There can be an issue that jams up docker when fakeroot
+is being used.
+
+See https://github.com/moby/moby/issues/45436
+
+for the issue and workarounds to apply to docker.
