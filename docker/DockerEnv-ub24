@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 RUN DEBIAN_FRONTEND=noninteractive apt update
-RUN DEBIAN_FRONTEND=apt install -y bc build-essential cpio curl git rsync tar unzip file vim openssh-client  openssl python3
+RUN DEBIAN_FRONTEND=noninteractive apt install -y bc build-essential cpio curl git rsync tar unzip file vim openssh-client  openssl python3
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 2
 RUN userdel -r ubuntu || true
 RUN groupadd -g GID LOGNAME || true
