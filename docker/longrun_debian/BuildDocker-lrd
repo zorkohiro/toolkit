@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+MYUID=$(id -u)
+MYGID=$(id -g)
+MYLOG=$LOGNAME
+f=$(mktemp)
+sed -e "s/LOGNAME/$MYLOG/g" -e "s/UID/$MYUID/g" -e "s/GID/$MYGID/g" Dockerfile-lrd >  $f
+docker build -t lrd -f $f .
+rm -f $f

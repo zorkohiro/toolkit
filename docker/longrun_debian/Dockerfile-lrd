@@ -1,0 +1,11 @@
+FROM debian:trixie-slim
+RUN apt update -y && apt install -y 7zip apt apt-utils attr bash-completion bc bsdutils build-essential curl dc diffutils \
+ dpkg findutils git grep gzip htop jq lbzip2 less mosh net-tools openssh-client openssh-server procps python3 rsync sed \
+ socat sudo tar vim wget xz-utils zip
+RUN userdel -r ubuntu || true
+RUN groupadd -g GID LOGNAME || true
+RUN useradd -m -s /bin/bash -u UID -g GID LOGNAME
+RUN mkdir -p /etc/sudoers.d && echo 'LOGNAME ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/LOGNAME && chmod 600 /etc/sudoers.d/LOGNAME
+# This is safe because app will be safe in the directory which is mapped at runtime
+WORKDIR /home/LOGNAME
+CMD ["/bin/bash"]

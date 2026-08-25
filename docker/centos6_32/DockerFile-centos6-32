@@ -1,0 +1,14 @@
+FROM i386/centos:6
+RUN echo "i686" > /etc/yum/vars/arch
+RUN echo "i386" > /etc/yum/vars/basearch
+COPY CentOS-Base.repo /etc/yum.repos.d
+RUN sed -i -e '/tsflags/d' /etc/yum.conf
+RUN yum clean all
+# Install 32-bit glibc compatibility tools which is needed to do anything else
+RUN yum install -y glibc.i686 || yum install -y glibc
+RUN yum install -y sudo openssh-clients ping
+RUN groupadd -g GID LOGNAME || true
+RUN useradd -m -s /bin/bash -u UID -g GID LOGNAME
+RUN mkdir -p /etc/sudoers.d && echo 'LOGNAME ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/LOGNAME && chmod 600 /etc/sudoers.d/LOGNAME
+RUN yum groupinstall -y Base 'Development Tools' 'Server Platform'
+CMD ["/bin/bash"]

@@ -1,0 +1,2 @@
+#!/bin/bash
+docker run -d --name lrd lrd sleep infinity

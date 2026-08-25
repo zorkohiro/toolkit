@@ -1,0 +1,6 @@
+#!/bin/bash
+IMAGE=centos6-32
+docker run -it --rm \
+    --user $UID \
+    -w /home/$LOGNAME \
+    $IMAGE "/bin/bash"

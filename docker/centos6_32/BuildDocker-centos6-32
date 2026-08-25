@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+IMAGE=centos6-32
+if [[ ! -f DockerFile-$IMAGE ]]; then
+    echo DockerFile-$IMAGE not found
+    exit 1
+fi
+MYUID=$(id -u)
+MYGID=$(id -g)
+MYLOG=$LOGNAME
+tmp=$(mktemp)
+sed -e "s/LOGNAME/$MYLOG/g" -e "s/UID/$MYUID/g" -e "s/GID/$MYGID/g" DockerFile-$IMAGE > $tmp
+docker build --platform=linux/386 -t $IMAGE -f $tmp .
+rm -f $tmp
