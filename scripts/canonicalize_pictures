@@ -1,0 +1,91 @@
+#!/bin/bash
+if [[ $# -eq 0 ]]; then
+ echo "Usage: $(basename $0) picture [picture ... ]"
+ exit 1
+fi
+logfile=$(mktemp)
+LIVE=${LIVE-false}
+if [[ $LIVE == "false" ]]; then
+ echo Note: this is a trial run
+else
+ echo Note: this is a live run.... sleeping for 5 seconds to give you a chance to change your mind
+ sleep 5
+fi
+for i in $*; do
+ if [[ ! -f $i ]]; then
+  echo $i is not a file
+  continue
+ fi
+ suf=$(echo $i | awk -F. ' { print $NF }')
+ new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000.${suf}" -CreateDate $i 2> $logfile | awk '{print $NF}'  || echo bogus )
+ if [[ "$new_name" == "bogus" ]]; then
+  echo $i cannot get a new name
+  continue
+ fi
+ if [[ -z "$new_name" ]]; then
+  new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000.${suf}" -DateTimeOriginal $i 2> $logfile | awk '{print $NF}'  || echo bogus )
+  if [[ -z "$new_name" || X"${new_name}" == "Xbogus" ]]; then
+   echo $i generates a null new name
+   continue
+  fi
+ fi
+ if [[ $i == "$new_name" ]]; then
+  cmp -s $i "$new_name"
+  if [[ $? -eq 0 ]]; then
+   if [[ "$LIVE" != "true" ]]; then
+    echo $i and $new_name are the same file and contents
+   fi
+   continue
+  fi
+  echo $i and $new_name are the same filename but with different content- generating new name
+  root=$(echo $new_name | awk -F. ' { print $1 }')
+  x=""
+  xsuf=1
+  while :; do
+   x=${root}-${xsuf}.${suf}
+   if [[ ! -f $x ]]; then
+    new_name=$x
+    break
+   fi
+   xsuf=$((xsuf + 1))
+  done
+  echo new name is now $new_name
+ fi
+ if [[ -f $new_name ]]; then
+  cmp -s $i $new_name && continue
+  if [[ $? -eq 0 ]]; then
+   echo move $i to $new_name, but $new_name already exists and is the same file
+   continue
+  fi
+  echo $i and $new_name are the same filename but with different content- generating new name
+  root=$(echo $new_name | awk -F. '{ print $1 }')
+  x=""
+  xsuf=1
+  while :; do
+   x=${root}-${xsuf}.jpg
+   if [[ ! -f $x ]]; then
+    new_name=$x
+    break
+   fi
+   xsuf=$((xsuf + 1))
+  done
+  echo new name is now $new_name
+ fi
+ if [[ "${LIVE}" != "true" ]]; then
+  echo would mv $i $new_name
+  continue
+ fi
+ echo mv $i $new_name
+ mv $i $new_name
+ if [[ $? -ne 0 ]]; then
+  echo oh crap, that got a nonzero exit
+  echo $logfile
+  exit 1
+ fi
+done
+sz=$(stat -c%s $logfile)
+if [[ $sz -gt 0 ]]; then
+ echo log is in $logfile
+else
+ rm -f $logfile
+fi
