@@ -1,82 +1,111 @@
 #!/bin/bash
+SAVE=${SAVE-/var/tmp}
 if [[ $# -eq 0 ]]; then
  echo "Usage: $(basename $0) picture [picture ... ]"
+ echo "LIVE=true will actually do something instead of saying what you will do"
+ echo "SAVE=<path> will be a writable directory on a filesystem big enough to save all originals if operating live"
+ echo "USEFILEDATE=yes will allow file modify date to be used as a name generator"
  exit 1
 fi
 logfile=$(mktemp)
 LIVE=${LIVE-false}
 if [[ $LIVE == "false" ]]; then
  echo Note: this is a trial run
+ SAVE=
 else
- echo Note: this is a live run.... sleeping for 5 seconds to give you a chance to change your mind
- sleep 5
+ echo "Note: this is a live run"
+ sleep 2
 fi
-for i in $*; do
- if [[ ! -f $i ]]; then
-  echo $i is not a file
+if [[ -d "${SAVE}" ]]; then
+ sd=$(mktemp -d -p ${SAVE})
+fi
+for orig_path in "$@"; do
+ if [[ ! -f "$orig_path" ]]; then
+  echo $orig_path does not exist as a file
   continue
  fi
- suf=$(echo $i | awk -F. ' { print $NF }')
- new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000.${suf}" -CreateDate $i 2> $logfile | awk '{print $NF}'  || echo bogus )
+ if [[ -d "$sd" ]]; then
+  cp "$orig_path" $sd
+ fi
+ path=$(dirname "$orig_path")
+ name=$(basename "$orig_path")
+ suf=$(echo $name | awk -F. ' { print $NF }')
+
+ new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000" -DateTimeOriginal "$orig_path" 2> $logfile | awk '{print $NF}'  || echo bogus )
  if [[ "$new_name" == "bogus" ]]; then
-  echo $i cannot get a new name
+  echo cannot get a new name from $orig_path
   continue
  fi
  if [[ -z "$new_name" ]]; then
-  new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000.${suf}" -DateTimeOriginal $i 2> $logfile | awk '{print $NF}'  || echo bogus )
-  if [[ -z "$new_name" || X"${new_name}" == "Xbogus" ]]; then
-   echo $i generates a null new name
-   continue
+  new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000" -CreateDate "$orig_path" 2> $logfile | awk '{print $NF}'  || echo bogus )
+  if [[ -z "$new_name" || X"$new_name" == "Xbogus" ]]; then
+   if [[ X"${USEFILEDATE}" == "Xyes" ]]; then
+    new_name=$(set -o pipefail; exiftool -d "IMG_%Y%m%d_%H%M%S000" -FileModifyDate "$orig_path" 2> $logfile | awk '{print $NF}'  || echo bogus )
+   fi
+   if [[ -z "$new_name" || X"$new_name" == "Xbogus" ]]; then
+    echo a null new name is generated from $orig_path
+    continue
+   fi
   fi
  fi
- if [[ $i == "$new_name" ]]; then
-  cmp -s $i "$new_name"
-  if [[ $? -eq 0 ]]; then
-   if [[ "$LIVE" != "true" ]]; then
-    echo $i and $new_name are the same file and contents
-   fi
-   continue
-  fi
-  echo $i and $new_name are the same filename but with different content- generating new name
-  root=$(echo $new_name | awk -F. ' { print $1 }')
-  x=""
-  xsuf=1
-  while :; do
-   x=${root}-${xsuf}.${suf}
-   if [[ ! -f $x ]]; then
-    new_name=$x
-    break
-   fi
-   xsuf=$((xsuf + 1))
-  done
-  echo new name is now $new_name
+ if [[ "${path}" != "." ]]; then
+  new_path="${path}/${new_name}.${suf}"
+ else
+  new_path="${new_name}.${suf}"
  fi
- if [[ -f $new_name ]]; then
-  cmp -s $i $new_name && continue
-  if [[ $? -eq 0 ]]; then
-   echo move $i to $new_name, but $new_name already exists and is the same file
-   continue
+ if [[ "$orig_path" == "$new_path" ]]; then
+  if [[ "$LIVE" != "true" ]]; then
+   echo $new_path already the right format
   fi
-  echo $i and $new_name are the same filename but with different content- generating new name
-  root=$(echo $new_name | awk -F. '{ print $1 }')
-  x=""
-  xsuf=1
-  while :; do
-   x=${root}-${xsuf}.jpg
-   if [[ ! -f $x ]]; then
-    new_name=$x
-    break
-   fi
-   xsuf=$((xsuf + 1))
-  done
-  echo new name is now $new_name
- fi
- if [[ "${LIVE}" != "true" ]]; then
-  echo would mv $i $new_name
   continue
  fi
- echo mv $i $new_name
- mv $i $new_name
+
+ if [[ -f "$new_path" ]]; then
+  cmp -s "$orig_path" "$new_path"
+  if [[ $? -eq 0 ]]; then
+   if [[ "$LIVE" != "true" ]]; then
+    echo $orig_path and $new_path, which already is present, are the same
+   else
+    rm -fv "$orig_path"
+   fi
+   continue
+  fi
+  
+  xsuf=1
+  fmt="%03d"
+  while :; do
+   shrunk=$(echo ${new_name} | sed 's/000$//')
+   zpxsuf=$(printf $fmt $xsuf)
+   tname="${shrunk}${zpxsuf}"
+   if [[ "${path}" != "." ]]; then
+    tpath="${path}/${tname}.${suf}"
+   else
+    tpath="${tname}.${suf}"
+   fi
+   if [[ ! -f "$tpath" ]]; then
+    new_name="$tname"
+    new_path="$tpath"
+    break
+   fi
+   xsuf=$((xsuf + 1))
+   if [[ $xsuf -eq 1000000 ]]; then
+    echo 'forget it- too many renames (1 million)'
+    exit 1
+   elif [[ $xsuf -eq 100000 ]]; then
+    fmt="%06d"
+   elif [[ $xsuf -eq 10000 ]]; then
+    fmt="%05d"
+   elif [[ $xsuf -eq 1000 ]]; then
+    fmt="%04d"
+   fi
+  done
+ fi
+
+ if [[ "${LIVE}" != "true" ]]; then
+  echo would mv $orig_path to $new_path
+  continue
+ fi
+ mv -v "$orig_path" "$new_path"
  if [[ $? -ne 0 ]]; then
   echo oh crap, that got a nonzero exit
   echo $logfile
@@ -88,4 +117,7 @@ if [[ $sz -gt 0 ]]; then
  echo log is in $logfile
 else
  rm -f $logfile
+fi
+if [[ -d "$sd" ]]; then
+ echo saved files are in $sd
 fi
