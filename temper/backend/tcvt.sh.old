@@ -1,0 +1,25 @@
+#!/bin/bash
+DATA=/var/lib/temper/data
+TMP2=$(mktemp /tmp/tcvt_b_XXXXXX)
+TMP3=$(mktemp /tmp/tcvt_c_XXXXXX)
+
+function doexit {
+ rm -f $TMP2 $TMP3
+ exit $1
+}
+
+cat $DATA | while read d c f; do ld=$(date --date="@${d}" +"%b %e %Y %H:%M"); echo $ld $f; done > $TMP2
+
+cat > $TMP3<<EOF
+set terminal png truecolor size 1536, 768 font "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+set autoscale
+set xdata time
+set xtics rotate font "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf,9"
+set timefmt "%b %d %Y %H:%M"
+set format x "%h %d %Y"
+set output "/var/www/feral.com/public_html/temp/temp.png"
+set xlabel "Date" font "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf,8"
+EOF
+echo "plot \"$TMP2\"  using 1:5 t \"Temperature Degrees F\"" >> $TMP3
+gnuplot $TMP3
+doexit $?

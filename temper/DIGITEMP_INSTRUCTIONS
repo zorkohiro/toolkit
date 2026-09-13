@@ -1,0 +1,5 @@
+
+Short instructions for Debian GNU Linux users:
+:~# apt-get install digitemp
+:~# digitemp_DS9097 -i -s /dev/ttyUSB0
+:~# digitemp_DS9097 -q -t 0 -c .digitemprc
